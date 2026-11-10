@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="toolkit-bg">
+<div class="dashboard">
+
+    <a href="{{ back_url }}" style="font-size:13px; color:var(--brand); text-decoration:none;">← Back to {{ doc.category }}</a>
+
+    <div style="background:var(--bg-card); border-radius:12px; box-shadow:var(--shadow); width:100%; max-width:820px; margin:16px auto 0; padding:20px 24px;">
+
+        <div style="display:flex; justify-content:space-between; align-items:start; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+            <div>
+                <p style="font-size:17px; font-weight:700; color:var(--text-primary); margin-bottom:2px;">{{ doc.icon }} {{ doc.title }}{% if doc.is_archived %} <span style="font-size:11px; background:var(--bg-chip); border:1px solid var(--border); color:var(--text-muted); padding:2px 8px; border-radius:10px;">Archived</span>{% endif %}</p>
+                <p style="font-size:13px; color:var(--text-secondary);">{{ doc.category }}{% if doc.issue_date %} · Issued {{ doc.issue_date | dmy }}{% endif %}</p>
+            </div>
+            {% if doc.expiry.status == 'expired' %}
+                <span style="font-size:12px; font-weight:700; background:var(--tint-red); color:var(--red); padding:3px 12px; border-radius:10px;">{{ doc.expiry.text }}</span>
+            {% elif doc.expiry.status == 'soon' %}
+                <span style="font-size:12px; font-weight:700; color:var(--red);">{{ doc.expiry.text }}</span>
+            {% else %}
+                <span style="font-size:12px; color:var(--text-muted);">{{ doc.expiry.text }}</span>
+            {% endif %}
+        </div>
+
+        {% if doc.notes %}
+        <p style="font-size:13px; color:var(--text-secondary); background:var(--bg-chip); border:1px solid var(--border); border-radius:8px; padding:8px 12px; margin-bottom:14px;">{{ doc.notes }}</p>
+        {% endif %}
+
+        <iframe src="{{ url_for('vault_file', doc_id=doc.id) }}" title="{{ doc.title }}"
+            style="width:100%; height:70vh; min-height:360px; border:1px solid var(--border); border-radius:8px; background:#fff; margin-bottom:16px;"></iframe>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <form method="POST" action="{{ url_for('vault_favorite', doc_id=doc.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" style="background:none; border:1px solid var(--accent-purple); color:var(--accent-purple); border-radius:8px; padding:8px 16px; font-size:13px; cursor:pointer;">{{ '⭐ Remove from favorites' if doc.is_favorite else '☆ Add to favorites' }}</button>
+            </form>
+            <a href="{{ url_for('vault_edit', doc_id=doc.id) }}" style="display:inline-block; border:1px solid var(--brand); color:var(--brand); border-radius:8px; padding:8px 16px; font-size:13px; text-decoration:none;">Edit</a>
+            <form method="POST" action="{{ url_for('vault_archive', doc_id=doc.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" style="background:none; border:1px solid var(--border); color:var(--text-secondary); border-radius:8px; padding:8px 16px; font-size:13px; cursor:pointer;">{{ 'Restore from archive' if doc.is_archived else '🗄️ Archive' }}</button>
+            </form>
+            <form method="POST" action="{{ url_for('vault_delete', doc_id=doc.id) }}" data-confirm="Delete this document and its file for good?">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" style="background:none; border:1px solid var(--red); color:var(--red); border-radius:8px; padding:8px 16px; font-size:13px; cursor:pointer;">Delete</button>
+            </form>
+        </div>
+
+    </div>
+
+</div>
+</div>
+
+{% endblock %}

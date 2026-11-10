@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="form-page">
+<div class="form-layout">
+
+    <section class="form-card">
+        <h1 class="form-title">Monthly budget</h1>
+        <p class="form-sub">The most you plan to spend in one month. Each month can have its own amount.</p>
+
+        {% if error %}
+        <p class="auth-error" style="margin-bottom:14px;">{{ error }}</p>
+        {% endif %}
+
+        {% if budget_kind == 'set' %}
+        <p class="form-note">{{ month_name }} budget is now ₹{{ budget_limit | inr }}.</p>
+        {% elif budget_kind == 'carried' %}
+        <p class="form-note">No budget saved for {{ month_name }} yet. It is using ₹{{ budget_limit | inr }} carried from {{ budget_from }}. Save an amount below to set {{ month_name }} on its own.</p>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('set_budget') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-grid-2" style="margin-bottom:16px;">
+                <div>
+                    <label for="month" class="form-label">Month</label>
+                    <input type="month" id="month" name="month" value="{{ month }}" required>
+                </div>
+                <div>
+                    <label for="amount" class="form-label">Budget (₹)</label>
+                    <input type="number" id="amount" name="amount" step="0.01" min="0.01" placeholder="20000" value="{{ prefill }}" required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn">Save budget</button>
+            <a href="{{ url_for('dashboard') }}" class="form-cancel">Cancel and go back</a>
+
+        </form>
+    </section>
+
+    <aside class="preview-card">
+        <p class="preview-label">Live preview</p>
+        <p class="preview-value" id="pv-amount">₹0</p>
+        <p class="preview-sub">Nothing is saved until you press Save.</p>
+        <div class="preview-row"><span>Month</span><strong id="pv-month">—</strong></div>
+        <div class="preview-row"><span>Limit</span><strong id="pv-limit">—</strong></div>
+        <p class="form-note" style="margin:10px 0 0;">If this month already has a budget, saving replaces it.</p>
+    </aside>
+
+</div>
+</div>
+
+<script>
+    function update() {
+        const month = byId('month').value;
+        const amount = parseFloat(byId('amount').value);
+
+        let label = '—';
+        if (/^\d{4}-\d{2}$/.test(month)) {
+            label = MONTH_FULL[Number(month.slice(5, 7)) - 1] + ' ' + month.slice(0, 4);
+        }
+
+        byId('pv-amount').textContent = rupees(byId('amount').value);
+        byId('pv-month').textContent = label;
+        byId('pv-limit').textContent = amount > 0 ? 'Spend up to ' + rupees(amount) : '—';
+    }
+
+    ['month', 'amount'].forEach(function (id) {
+        byId(id).addEventListener('input', update);
+    });
+    update();
+</script>
+
+{% endblock %}

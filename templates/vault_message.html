@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="toolkit-bg">
+<div style="min-height:calc(100vh - 92px); display:flex; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:var(--bg-card); border-radius:12px; box-shadow:var(--shadow); width:100%; max-width:380px; padding:28px; text-align:center;">
+        <h1 style="font-size:19px; font-weight:700; color:var(--text-primary); margin-bottom:8px;">{{ title }}</h1>
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:18px;">{{ text }}</p>
+        <a href="{{ back_url }}" class="btn" style="display:inline-block;">Go back</a>
+    </div>
+</div>
+</div>
+
+{% endblock %}

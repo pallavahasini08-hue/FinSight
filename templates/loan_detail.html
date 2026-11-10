@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="toolkit-bg">
+<div class="dashboard">
+
+    <a href="{{ url_for('loan_tracker') }}" style="font-size:13px; color:var(--brand); text-decoration:none;">← Back to Loan Tracker</a>
+
+    <div style="background:var(--bg-card); border-radius:12px; box-shadow:var(--shadow); width:100%; max-width:560px; margin:16px auto 0; padding:20px 24px;">
+
+        <p style="font-size:16px; font-weight:700; color:var(--text-primary); margin-bottom:2px;">🏦 {{ loan.name }}{% if loan.is_cleared %} <span style="font-size:11px; background:var(--tint-green); color:var(--green); padding:2px 8px; border-radius:10px; font-weight:700;">CLEARED</span>{% endif %}</p>
+        <p style="font-size:13px; color:var(--text-secondary);">{{ loan.lender }} · {{ loan.rate_text }} a year · {{ loan.tenure }} months · started {{ loan.start_date | dmy }}</p>
+
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0; margin:18px 0 14px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:14px 0;">
+            <div style="text-align:center;">
+                <p style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">EMI per month</p>
+                <p style="font-size:16px; font-weight:700; color:var(--text-primary);">₹{{ loan.emi | inr }}</p>
+            </div>
+            <div style="text-align:center; border-left:1px solid var(--border); border-right:1px solid var(--border);">
+                <p style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Paid so far</p>
+                <p style="font-size:16px; font-weight:700; color:var(--green);">₹{{ loan.paid_amount | inr }}</p>
+            </div>
+            <div style="text-align:center;">
+                <p style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Remaining</p>
+                <p style="font-size:16px; font-weight:700; color:var(--red);">₹{{ loan.remaining | inr }}</p>
+            </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--text-secondary); margin-bottom:8px;">
+            <span>{{ loan.emis_paid }} of {{ loan.tenure }} EMIs paid</span>
+            <span>{{ loan.pct }}%</span>
+        </div>
+        <div style="width:100%; height:8px; background:var(--border); border-radius:20px; overflow:hidden; margin-bottom:16px;">
+            <div style="height:100%; width:{{ loan.pct }}%; background:{{ 'var(--green)' if loan.pct >= 75 else 'var(--amber)' }}; border-radius:20px;"></div>
+        </div>
+
+        <div style="background:var(--bg-chip); border:1px solid var(--border); border-radius:10px; padding:10px 14px; margin-bottom:18px; font-size:13px; color:var(--text-secondary);">
+            <p style="margin-bottom:4px;"><strong style="color:var(--text-primary);">Loan amount:</strong> ₹{{ loan.principal | inr }}</p>
+            <p style="margin-bottom:4px;"><strong style="color:var(--text-primary);">Total interest payable:</strong> ₹{{ loan.total_interest | inr }}</p>
+            <p><strong style="color:var(--text-primary);">Total payable:</strong> ₹{{ loan.total_payable | inr }}</p>
+        </div>
+
+        {% if loan.is_cleared %}
+            <p style="font-size:14px; font-weight:700; color:var(--green); margin-bottom:18px;">✅ Loan cleared. Every EMI is paid.</p>
+        {% else %}
+            <p style="font-size:13px; font-weight:600; margin-bottom:10px; color:{{ 'var(--red)' if loan.due_color == 'red' else 'var(--amber)' if loan.due_color == 'amber' else 'var(--text-secondary)' }};">{{ loan.due_text }}</p>
+            <form method="POST" action="{{ url_for('mark_emi_paid', loan_id=loan.id) }}" style="margin-bottom:20px;"
+            data-confirm="Mark EMI {{ loan.emis_paid + 1 }} of ₹{{ loan.emi | inr }} as paid today?" data-confirm-label="Mark paid" data-confirm-kind="primary">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn" style="width:100%; padding:10px; font-size:14px;">✓ Mark EMI {{ loan.emis_paid + 1 }} paid</button>
+            </form>
+        {% endif %}
+
+        {% if not loan.is_cleared %}
+        <!-- Prepayment simulator -->
+        <div id="simulator" style="border-top:1px solid var(--border); padding-top:16px; margin-bottom:18px;">
+            <p style="font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:4px;">What if I pay extra each month?</p>
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">A rough estimate from your rate and EMI. Your lender's own figures may differ a little.</p>
+            <form method="GET" action="{{ url_for('loan_detail', loan_id=loan.id) }}#simulator" style="display:flex; gap:10px; margin-bottom:12px;">
+                <input type="number" name="extra" step="0.01" min="1" placeholder="Extra per month (₹)" value="{{ extra_text }}" required
+                    style="flex:1; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; background:var(--bg-input); color:var(--text-primary);">
+                <button type="submit" class="btn-outline" style="padding:8px 16px; font-size:13px; cursor:pointer;">Compare</button>
+            </form>
+
+            {% if sim_error %}
+            <p class="auth-error" style="margin:0;">{{ sim_error }}</p>
+            {% endif %}
+
+            {% if sim %}
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:13px;">
+                <div style="background:var(--bg-chip); border:1px solid var(--border); border-radius:10px; padding:10px 12px;">
+                    <p style="font-weight:700; color:var(--text-primary); margin-bottom:6px;">As it is</p>
+                    <p style="color:var(--text-secondary);">{{ sim.normal_months }} more months</p>
+                    <p style="color:var(--text-secondary);">Ends {{ sim.normal_end }}</p>
+                    <p style="color:var(--text-secondary);">Interest left: ₹{{ sim.normal_interest | inr }}</p>
+                </div>
+                <div style="background:var(--tint-green); border-radius:10px; padding:10px 12px;">
+                    <p style="font-weight:700; color:var(--green); margin-bottom:6px;">With +₹{{ sim.extra | inr }}/month</p>
+                    <p style="color:var(--text-primary);">{{ sim.faster_months }} more months</p>
+                    <p style="color:var(--text-primary);">Ends {{ sim.faster_end }}</p>
+                    <p style="color:var(--text-primary);">Interest left: ₹{{ sim.faster_interest | inr }}</p>
+                </div>
+            </div>
+            <p style="font-size:13px; font-weight:700; color:var(--green); margin-top:10px;">
+                {% if sim.months_saved > 0 or sim.interest_saved > 0 %}
+                You would finish {{ sim.months_saved }} month{{ 's' if sim.months_saved != 1 else '' }} earlier and save about ₹{{ sim.interest_saved | inr }} in interest.
+                {% else %}
+                That extra amount would not change much.
+                {% endif %}
+            </p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- EMI history -->
+        <p style="font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:10px;">EMI history</p>
+        <div style="font-size:13px; color:var(--text-secondary); margin-bottom:18px;">
+            {% for p in payments %}
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid var(--border);">
+                <span>EMI {{ p.number }} · due {{ p.due_date | dmy }}</span>
+                <span style="color:var(--green); white-space:nowrap;">✓ ₹{{ p.amount | inr }} · paid {{ p.paid_date | dmy }}</span>
+            </div>
+            {% endfor %}
+            {% if loan.emis_paid > payments|length %}
+            <p style="padding:6px 0; color:var(--text-muted);">{{ loan.emis_paid - payments|length }} EMI{{ 's' if loan.emis_paid - payments|length != 1 else '' }} paid before you started tracking this loan.</p>
+            {% endif %}
+            {% if not payments and loan.emis_paid == 0 %}
+            <p>No EMIs paid yet</p>
+            {% endif %}
+        </div>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <a href="{{ url_for('edit_loan', loan_id=loan.id) }}" style="display:inline-block; border:1px solid var(--brand); color:var(--brand); border-radius:8px; padding:8px 16px; font-size:13px; text-decoration:none;">Edit</a>
+            <form method="POST" action="{{ url_for('delete_loan', loan_id=loan.id) }}"data-confirm="Delete this loan and its EMI history?" >
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" style="background:none; border:1px solid var(--red); color:var(--red); border-radius:8px; padding:8px 16px; font-size:13px; cursor:pointer;">Delete</button>
+            </form>
+        </div>
+
+    </div>
+
+</div>
+</div>
+
+{% endblock %}

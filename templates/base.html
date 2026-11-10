@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinSight</title>
+
+    <script>
+        /* Apply the saved theme before the page paints, so dark mode never flashes white. */
+        try {
+            if (localStorage.getItem('finsight-theme') === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        } catch (e) {}
+    </script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        /* Small helpers shared by the form previews and the charts. */
+        const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const MONTH_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+        function byId(id) {
+            return document.getElementById(id);
+        }
+
+        /* "12000.5" -> "₹12,000.5" (Indian digit grouping). Empty or bad input -> "₹0". */
+        function rupees(value) {
+            const n = parseFloat(value);
+            if (isNaN(n)) return '₹0';
+            return '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+        }
+
+        /* "2026-09-15" -> "15 Sep 2026". Same look as the dmy filter on the server. */
+        function dayText(value) {
+            const p = (value || '').split('-');
+            if (p.length !== 3 || !p[0]) return '—';
+            return p[2] + ' ' + MONTH_SHORT[Number(p[1]) - 1] + ' ' + p[0];
+        }
+    </script>
+</head>
+<body>
+
+    <header class="app-header">
+
+        <div class="header-left">
+            <h2 class="app-logo">FinSight</h2>
+            <span class="welcome-text">{% if current_username %}Welcome, {{ current_username }} · {{ current_month_label }}{% else %}Clarity for every rupee{% endif %}</span>
+        </div>
+
+        <div class="header-right">
+            {% if current_username %}
+            <div class="mode-switcher">
+                <a href="{{ url_for('dashboard') }}"
+                   class="mode-link {% if active_page == 'dashboard' %}active{% endif %}">
+                    Personal Finance
+                </a>
+                <a href="{{ url_for('toolkit') }}"
+                   class="mode-link {% if active_page == 'toolkit' %}active{% endif %}">
+                    Financial Toolkit
+                </a>
+            </div>
+            {% endif %}
+
+            <button class="theme-toggle" id="themeToggle" type="button">🌙 Dark</button>
+
+            {% if current_username %}
+            <a href="{{ url_for('change_password') }}" class="logout-link">Change password</a>
+            <form method="POST" action="{{ url_for('logout') }}" style="margin:0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="logout-link">Log out</button>
+            </form>
+            {% else %}
+            <a href="{{ url_for('login') }}" class="logout-link">Log in</a>
+            <a href="{{ url_for('signup') }}" class="btn" style="padding:8px 16px; font-size:14px;">Sign up</a>
+            {% endif %}
+        </div>
+
+    </header>
+
+    {% set ep = request.endpoint or '' %}
+    {% if current_username and active_page == 'toolkit' %}
+    <nav class="tab-strip" aria-label="Toolkit sections">
+        <a href="{{ url_for('toolkit') }}"
+           class="tab-link {% if ep == 'toolkit' %}active{% endif %}">Toolkit home</a>
+        <a href="{{ url_for('dream_planner') }}"
+           class="tab-link {% if ep in ['dream_planner', 'add_dream', 'edit_dream', 'dream_detail'] %}active{% endif %}">Dream Planner</a>
+        <a href="{{ url_for('vault_home') }}"
+           class="tab-link {% if ep.startswith('vault') %}active{% endif %}">Document Vault</a>
+        <a href="{{ url_for('loan_tracker') }}"
+           class="tab-link {% if ep in ['loan_tracker', 'add_loan', 'edit_loan', 'loan_detail'] %}active{% endif %}">Loan Tracker</a>
+    </nav>
+    {% endif %}
+
+    <main> 
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <script>
+        const toggleBtn = document.getElementById('themeToggle');
+
+        function savedTheme() {
+            try { return localStorage.getItem('finsight-theme') || 'light'; } catch (e) { return 'light'; }
+        }
+
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                toggleBtn.textContent = '☀️ Light';
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                toggleBtn.textContent = '🌙 Dark';
+            }
+        }
+
+        applyTheme(savedTheme());
+
+        toggleBtn.addEventListener('click', () => {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const newTheme = isDark ? 'light' : 'dark';
+            try { localStorage.setItem('finsight-theme', newTheme); } catch (e) {}
+            applyTheme(newTheme);
+            /* Charts listen for this so they can re-read their colors from CSS. */
+            document.dispatchEvent(new Event('themechange'));
+        });
+    </script>
+        <div class="confirm-overlay" id="confirmOverlay" hidden>
+            <div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="confirmText">
+                <p class="confirm-text" id="confirmText"></p>
+                <div class="confirm-actions">
+                    <button type="button" class="btn-outline" id="confirmCancel" style="padding:9px 20px; font-size:14px;">Cancel</button>
+                    <button type="button" class="btn danger" id="confirmOk" style="padding:9px 20px; font-size:14px;">Delete</button>
+                </div>
+            </div>
+        </div>
+    
+        <script>
+            /* One shared confirm pop-up. Any form with data-confirm="..." asks first. */
+            (function () {
+                const overlay = byId('confirmOverlay');
+                const text = byId('confirmText');
+                const okBtn = byId('confirmOk');
+                const cancelBtn = byId('confirmCancel');
+                let pendingForm = null;
+    
+                function closeBox() { overlay.hidden = true; pendingForm = null; }
+    
+                document.addEventListener('submit', function (e) {
+                    const form = e.target;
+                    const message = form.dataset.confirm;
+                    if (!message) return;
+                    e.preventDefault();
+                    pendingForm = form;
+                    text.textContent = message;
+                    okBtn.textContent = form.dataset.confirmLabel || 'Delete';
+                    okBtn.classList.toggle('danger', form.dataset.confirmKind !== 'primary');
+                    overlay.hidden = false;
+                    cancelBtn.focus();
+                });
+    
+                okBtn.addEventListener('click', function () {
+                    const form = pendingForm;
+                    closeBox();
+                    if (form) form.submit();
+                });
+                cancelBtn.addEventListener('click', closeBox);
+                overlay.addEventListener('click', function (e) { if (e.target === overlay) closeBox(); });
+                document.addEventListener('keydown', function (e) {
+                    if (e.key === 'Escape' && !overlay.hidden) closeBox();
+                });
+            })();
+        </script>
+</body>
+</html>

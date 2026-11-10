@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="toolkit-bg">
+<div style="min-height:calc(100vh - 92px); display:flex; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:var(--bg-card); border-radius:12px; box-shadow:var(--shadow); width:100%; max-width:360px; padding:28px 28px 24px; text-align:center;">
+
+        <div style="font-size:40px; margin-bottom:8px;">🔒</div>
+        <h1 style="font-size:19px; font-weight:700; color:var(--text-primary); margin-bottom:6px;">{{ 'Create your vault PIN' if first_time else 'Document Vault' }}</h1>
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:18px;">
+            {% if first_time %}Choose a PIN of 4 to 6 digits. You will type it each time you open the vault.{% else %}Enter your PIN to open the vault.{% endif %}
+        </p>
+
+        {% if error %}
+        <p class="auth-error" style="margin:0 0 14px;" {% if wait %}id="waitMessage"{% endif %}>{{ error }}</p>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('vault_unlock') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="password" name="pin" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" minlength="4" autocomplete="off" required autofocus
+                placeholder="{{ 'New PIN' if first_time else 'PIN' }}"
+                style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:18px; letter-spacing:6px; text-align:center; background:var(--bg-input); color:var(--text-primary); margin-bottom:10px;">
+            {% if first_time %}
+            <input type="password" name="pin_again" inputmode="numeric" pattern="[0-9]{4,6}" maxlength="6" minlength="4" autocomplete="off" required
+                placeholder="Type it again"
+                style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:18px; letter-spacing:6px; text-align:center; background:var(--bg-input); color:var(--text-primary); margin-bottom:10px;">
+            {% endif %}
+            <button type="submit" class="btn" id="unlockBtn" style="width:100%; padding:10px; font-size:14px;" {% if wait %}disabled{% endif %}>{{ 'Save PIN and open' if first_time else 'Unlock' }}</button>
+        </form>
+
+        {% if not first_time %}
+        <a href="{{ url_for('vault_forgot') }}" style="display:block; margin-top:14px; font-size:12px; color:var(--brand); text-decoration:none;">Forgot PIN?</a>
+        {% endif %}
+        <a href="{{ url_for('toolkit') }}" style="display:block; margin-top:8px; font-size:12px; color:var(--text-secondary); text-decoration:none;">← Back to Toolkit</a>
+
+    </div>
+</div>
+</div>
+
+{% if wait %}
+<script>
+    // Counts the pause down on screen, then lets the person try again.
+    let left = {{ wait }};
+    const btn = document.getElementById('unlockBtn');
+    const note = document.getElementById('waitMessage');
+    const timer = setInterval(() => {
+        left -= 1;
+        if (left <= 0) {
+            clearInterval(timer);
+            btn.disabled = false;
+            if (note) note.textContent = 'You can try again now.';
+        } else if (note) {
+            note.textContent = 'Please wait ' + left + ' second' + (left === 1 ? '' : 's') + ' before trying again.';
+        }
+    }, 1000);
+</script>
+{% endif %}
+
+{% endblock %}

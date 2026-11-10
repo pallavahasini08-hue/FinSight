@@ -1,0 +1,7 @@
+finsight.db
+finsight.db.bak*
+uploads/
+__pycache__/
+venv/
+.venv/
+.env

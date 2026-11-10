@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="form-page">
+<div class="form-layout">
+
+    <section class="form-card">
+        <h1 class="form-title">{{ 'Edit document' if editing else 'Add a document' }}</h1>
+
+        {% if error %}
+        <p class="auth-error" style="margin-bottom:14px;">{{ error }}</p>
+        {% endif %}
+
+        <form method="POST" action="{{ action_url }}" {% if not editing %}enctype="multipart/form-data"{% endif %}>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label for="title" class="form-label">Title</label>
+                <input type="text" id="title" name="title" placeholder="e.g. Passport" required maxlength="80" value="{{ form.get('title', '') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="category" class="form-label">Category</label>
+                <select id="category" name="category" required>
+                    <option value="" disabled {% if not form.get('category') %}selected{% endif %}>Choose a category</option>
+                    {% for slug, name, icon in categories %}
+                    <option value="{{ name }}" {% if form.get('category') == name %}selected{% endif %}>{{ icon }} {{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {% if not editing %}
+            <div class="form-group">
+                <label for="file" class="form-label">File (JPG, PNG or PDF, up to 10 MB)</label>
+                <input type="file" id="file" name="file" accept=".jpg,.jpeg,.png,.pdf,application/pdf,image/jpeg,image/png" required>
+            </div>
+            {% endif %}
+
+            <div class="form-grid-2">
+                <div>
+                    <label for="issue_date" class="form-label">Issue date (optional)</label>
+                    <input type="date" id="issue_date" name="issue_date" value="{{ form.get('issue_date', '') }}">
+                </div>
+                <div>
+                    <label for="expiry_date" class="form-label">Expiry date (optional)</label>
+                    <input type="date" id="expiry_date" name="expiry_date" value="{{ form.get('expiry_date', '') }}">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:16px;">
+                <label for="notes" class="form-label">Notes (optional)</label>
+                <textarea id="notes" name="notes" rows="3" maxlength="300" placeholder="e.g. Policy number, where the original is kept">{{ form.get('notes', '') or '' }}</textarea>
+            </div>
+
+            <button type="submit" class="btn">{{ 'Save changes' if editing else 'Save document' }}</button>
+            <a href="{{ back_url }}" class="form-cancel">Cancel and go back</a>
+
+        </form>
+    </section>
+
+    <aside class="preview-card">
+        <p class="preview-label">Live preview</p>
+        <p class="preview-value" id="pv-title">Document title</p>
+        <p class="preview-sub" id="pv-category">Category</p>
+        <div class="preview-row"><span>File</span><strong id="pv-file">—</strong></div>
+        <div class="preview-row"><span>Issued</span><strong id="pv-issue">—</strong></div>
+        <div class="preview-row"><span>Expiry</span><strong id="pv-expiry">No expiry</strong></div>
+        <div class="preview-row"><span>Notes</span><strong id="pv-notes">—</strong></div>
+    </aside>
+
+</div>
+</div>
+
+<script>
+    /* Same rule as expiry_info() on the server: under 30 days left needs attention. */
+    function expiryStatus(value) {
+        const p = (value || '').split('-').map(Number);
+        if (p.length !== 3 || p.some(isNaN)) return ['No expiry', ''];
+
+        const now = new Date();
+        const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+        const days = Math.round((Date.UTC(p[0], p[1] - 1, p[2]) - today) / 86400000);
+
+        if (days < 0) return ['Expired ' + (-days) + ' day' + (days === -1 ? '' : 's') + ' ago', 'var(--red)'];
+        if (days === 0) return ['Expires today', 'var(--amber)'];
+        if (days <= 30) return ['Expires in ' + days + ' day' + (days === 1 ? '' : 's'), 'var(--amber)'];
+        return ['Expires ' + dayText(value), 'var(--green)'];
+    }
+
+    function update() {
+        const category = byId('category');
+        const chosen = category.value ? category.options[category.selectedIndex].text : 'Category';
+        const fileInput = byId('file');
+
+        byId('pv-title').textContent = byId('title').value.trim() || 'Document title';
+        byId('pv-category').textContent = chosen;
+
+        let fileText = 'Already uploaded';
+        if (fileInput) {
+            fileText = fileInput.files.length ? fileInput.files[0].name : 'No file chosen';
+        }
+        byId('pv-file').textContent = fileText;
+
+        byId('pv-issue').textContent = dayText(byId('issue_date').value);
+
+        const status = expiryStatus(byId('expiry_date').value);
+        const expiryBox = byId('pv-expiry');
+        expiryBox.textContent = status[0];
+        expiryBox.style.color = status[1];
+
+        byId('pv-notes').textContent = byId('notes').value.trim() || '—';
+    }
+
+    ['title', 'category', 'file', 'issue_date', 'expiry_date', 'notes'].forEach(function (id) {
+        const field = byId(id);
+        if (!field) return;
+        field.addEventListener('input', update);
+        field.addEventListener('change', update);
+    });
+    update();
+</script>
+
+{% endblock %}

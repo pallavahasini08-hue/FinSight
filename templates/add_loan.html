@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="form-page">
+<div class="form-layout">
+
+    <section class="form-card">
+        <h1 class="form-title">{{ 'Edit loan' if editing else 'Add a loan' }}</h1>
+
+        {% if error %}
+        <p class="auth-error" style="margin-bottom:14px;">{{ error }}</p>
+        {% endif %}
+
+        <form method="POST" action="{{ action_url }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label for="name" class="form-label">Loan name</label>
+                <input type="text" id="name" name="name" placeholder="e.g. Home loan" required maxlength="80" value="{{ form.get('name', '') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="lender" class="form-label">Lender</label>
+                <input type="text" id="lender" name="lender" placeholder="e.g. SBI" required maxlength="80" value="{{ form.get('lender', '') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="principal" class="form-label">Loan amount (₹)</label>
+                <input type="number" id="principal" name="principal" step="0.01" min="1" placeholder="0.00" required value="{{ form.get('principal', '') }}">
+            </div>
+
+            <div class="form-grid-2">
+                <div>
+                    <label for="interest_rate" class="form-label">Interest rate (% a year)</label>
+                    <input type="number" id="interest_rate" name="interest_rate" step="0.01" min="0" max="100" placeholder="e.g. 9.5" required value="{{ form.get('interest_rate', '') }}">
+                </div>
+                <div>
+                    <label for="tenure_months" class="form-label">Tenure (months)</label>
+                    <input type="number" id="tenure_months" name="tenure_months" step="1" min="1" max="600" placeholder="e.g. 240" required value="{{ form.get('tenure_months', '') }}">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="start_date" class="form-label">Start date (the first EMI is due one month later)</label>
+                <input type="date" id="start_date" name="start_date" required value="{{ form.get('start_date', '') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="emi_amount" class="form-label">EMI per month (₹)</label>
+                <input type="number" id="emi_amount" name="emi_amount" step="0.01" min="1" placeholder="0.00" required value="{{ form.get('emi_amount', '') }}">
+            </div>
+
+            {% if not editing %}
+            <div class="form-group" style="margin-bottom:6px;">
+                <label for="emis_paid" class="form-label">EMIs already paid (optional)</label>
+                <input type="number" id="emis_paid" name="emis_paid" step="1" min="0" placeholder="0" value="{{ form.get('emis_paid', '') }}">
+            </div>
+            <p class="form-note">Use this if the loan started before you began tracking it.</p>
+            {% else %}
+            <p class="form-note">EMIs are marked paid from the loan page, so that is not changed here.</p>
+            {% endif %}
+
+            <button type="submit" class="btn">{{ 'Save changes' if editing else 'Save loan' }}</button>
+            <a href="{{ back_url }}" class="form-cancel">Cancel and go back</a>
+
+        </form>
+    </section>
+
+    <aside class="preview-card">
+        <p class="preview-label">Live preview</p>
+        <p class="preview-value" id="pv-emi">—</p>
+        <p class="preview-sub"><span id="pv-name">Loan name</span> · <span id="pv-lender">Lender</span></p>
+        <div class="preview-row"><span>Loan amount</span><strong id="pv-principal">—</strong></div>
+        <div class="preview-row"><span>Interest rate</span><strong id="pv-rate">—</strong></div>
+        <div class="preview-row"><span>Tenure</span><strong id="pv-tenure">—</strong></div>
+        <div class="preview-row"><span>Total payable</span><strong id="pv-payable">—</strong></div>
+        <div class="preview-row"><span>Total interest</span><strong id="pv-interest">—</strong></div>
+        <div class="preview-row"><span>First EMI due</span><strong id="pv-first">—</strong></div>
+        <div class="preview-row"><span>Last EMI due</span><strong id="pv-last">—</strong></div>
+    </aside>
+
+</div>
+</div>
+
+<script>
+    /* Same rule as add_months() on the server: keep the day, use the last day of a short month. */
+    function addMonths(value, months) {
+        const p = (value || '').split('-').map(Number);
+        if (p.length !== 3 || p.some(isNaN)) return '';
+        const index = p[0] * 12 + (p[1] - 1) + months;
+        const year = Math.floor(index / 12);
+        const month = index % 12;
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        const day = Math.min(p[2], lastDay);
+        return year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+    }
+
+    function update() {
+        const principal = parseFloat(byId('principal').value) || 0;
+        const emi = parseFloat(byId('emi_amount').value) || 0;
+        const tenure = parseInt(byId('tenure_months').value, 10) || 0;
+        const rate = byId('interest_rate').value;
+        const start = byId('start_date').value;
+        const payable = emi * tenure;
+
+        byId('pv-name').textContent = byId('name').value.trim() || 'Loan name';
+        byId('pv-lender').textContent = byId('lender').value.trim() || 'Lender';
+        byId('pv-emi').textContent = emi > 0 ? rupees(emi) + ' / month' : '—';
+        byId('pv-principal').textContent = principal > 0 ? rupees(principal) : '—';
+        byId('pv-rate').textContent = rate !== '' ? rate + '% a year' : '—';
+        byId('pv-tenure').textContent = tenure > 0 ? tenure + ' months' : '—';
+        byId('pv-payable').textContent = payable > 0 ? rupees(payable) : '—';
+
+        const interestBox = byId('pv-interest');
+        interestBox.style.color = '';
+        if (payable > 0 && principal > 0) {
+            if (payable < principal) {
+                interestBox.textContent = 'EMI × tenure is less than the loan amount';
+                interestBox.style.color = 'var(--red)';
+            } else {
+                interestBox.textContent = rupees(payable - principal);
+            }
+        } else {
+            interestBox.textContent = '—';
+        }
+
+        byId('pv-first').textContent = start ? dayText(addMonths(start, 1)) : '—';
+        byId('pv-last').textContent = start && tenure > 0 ? dayText(addMonths(start, tenure)) : '—';
+    }
+
+    ['name', 'lender', 'principal', 'interest_rate', 'tenure_months', 'start_date', 'emi_amount'].forEach(function (id) {
+        byId(id).addEventListener('input', update);
+    });
+    update();
+</script>
+
+{% endblock %}

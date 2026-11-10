@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="landing">
+<div class="landing-card" style="max-width:380px;">
+
+    <span class="landing-emoji" style="font-size:48px;">👋</span>
+    <h1 style="font-size:22px; font-weight:700; color:var(--text-primary); margin-bottom:4px;">Welcome back</h1>
+    <p class="landing-tagline" style="margin-bottom:24px;">Good to see you again</p>
+
+    {% for message in get_flashed_messages(category_filter=["success"]) %}
+    <p class="form-alert ok">{{ message }}</p>
+    {% endfor %}
+
+    {% if error %}
+    <p class="auth-error" {% if wait %}id="waitMessage"{% endif %}>{{ error }}</p>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('login') }}" style="text-align:left;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required autofocus autocomplete="username">
+
+        <label for="password">Password</label>
+        <div style="position:relative;">
+            <input type="password" id="password" name="password" required autocomplete="current-password" style="padding-right:44px;">
+            <button type="button" id="pwToggle" aria-label="Show password"
+                    style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:var(--text-muted); padding:2px; display:flex;">
+                <svg id="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+            </button>
+        </div>
+
+        <button type="submit" class="btn" id="loginBtn" {% if wait %}disabled{% endif %}>Log In</button>
+    </form>
+
+    <p class="auth-switch">Don't have an account? <a href="{{ url_for('signup') }}">Sign up</a></p>
+
+</div>
+</div>
+
+<script>
+    const eyeOpen = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+    const eyeOff = '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+
+    byId('pwToggle').addEventListener('click', function () {
+        const input = byId('password');
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        byId('eye-icon').innerHTML = show ? eyeOff : eyeOpen;
+        this.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+</script>
+
+{% if wait %}
+<script>
+    // Counts the pause down on screen, then lets the person try again.
+    let left = {{ wait }};
+    const loginBtn = document.getElementById('loginBtn');
+    const note = document.getElementById('waitMessage');
+    const timer = setInterval(() => {
+        left -= 1;
+        if (left <= 0) {
+            clearInterval(timer);
+            loginBtn.disabled = false;
+            if (note) note.textContent = 'You can try again now.';
+        } else if (note) {
+            note.textContent = 'Please wait ' + left + ' second' + (left === 1 ? '' : 's') + ' before trying again.';
+        }
+    }, 1000);
+</script>
+{% endif %}
+
+{% endblock %}

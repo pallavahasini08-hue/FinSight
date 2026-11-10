@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% macro doc_row(d) %}
+<a href="{{ url_for('vault_view', doc_id=d.id) }}" style="text-decoration:none; color:inherit; display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid var(--border);">
+    <span style="font-size:14px; font-weight:600; color:var(--text-primary);">{{ d.icon }} {{ d.title }}{% if d.is_favorite %} ⭐{% endif %}{% if d.notes %}<span style="display:block; font-size:12px; font-weight:400; color:var(--text-muted);">{{ d.notes }}</span>{% endif %}</span>
+    {% if d.expiry.status == 'expired' %}
+        <span style="font-size:12px; font-weight:700; white-space:nowrap; background:var(--tint-red); color:var(--red); padding:3px 10px; border-radius:10px;">{{ d.expiry.text }}</span>
+    {% elif d.expiry.status == 'soon' %}
+        <span style="font-size:12px; font-weight:700; white-space:nowrap; color:var(--red);">{{ d.expiry.text }}</span>
+    {% else %}
+        <span style="font-size:12px; white-space:nowrap; color:var(--text-muted);">{{ d.expiry.text }}</span>
+    {% endif %}
+</a>
+{% endmacro %}
+
+{% block content %}
+
+<div class="toolkit-bg">
+<div class="dashboard">
+
+    <a href="{{ url_for('vault_home') }}" style="font-size:13px; color:var(--brand); text-decoration:none;">← Back to Document Vault</a>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; margin-bottom:18px; gap:12px; flex-wrap:wrap;">
+        <h1 style="font-size:20px; font-weight:700; color:var(--text-primary);">{{ icon }} {{ name }}</h1>
+        <a href="{{ url_for('vault_add', category=slug) }}" class="btn">+ Add document</a>
+    </div>
+
+    {% if not docs and not archived %}
+        <div style="text-align:center; padding:60px 20px; color:var(--text-muted);">
+            <div style="font-size:40px; margin-bottom:10px;">{{ icon }}</div>
+            <p style="font-size:15px; font-weight:600;">No documents in {{ name }} yet</p>
+            <a href="{{ url_for('vault_add', category=slug) }}" class="btn" style="display:inline-block; margin-top:14px;">+ Add document</a>
+        </div>
+    {% endif %}
+
+    {% if docs %}
+    <div class="section-card">
+        {% for d in docs %}{{ doc_row(d) }}{% endfor %}
+    </div>
+    {% elif archived %}
+        <p style="font-size:13px; color:var(--text-muted);">No active documents in {{ name }}.</p>
+    {% endif %}
+
+    {% if archived %}
+    <details style="margin-top:22px;">
+        <summary style="cursor:pointer; font-size:14px; font-weight:700; color:var(--text-secondary);">🗄️ Archived ({{ archived|length }})</summary>
+        <div class="section-card" style="margin-top:10px; opacity:0.8;">
+            {% for d in archived %}{{ doc_row(d) }}{% endfor %}
+        </div>
+    </details>
+    {% endif %}
+
+</div>
+</div>
+
+{% endblock %}

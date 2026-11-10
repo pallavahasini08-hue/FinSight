@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="dashboard">
+
+    <div class="page-head-row">
+        <div class="page-head">
+            <h1>Your loans</h1>
+            <p>
+                {% if loans %}
+                    ₹{{ total_outstanding | inr }} outstanding · ₹{{ total_emi | inr }} EMI per month
+                {% elif cleared %}
+                    All your loans are cleared 🎉
+                {% else %}
+                    Keep track of EMIs and how much is left to pay
+                {% endif %}
+            </p>
+        </div>
+        <a href="{{ url_for('add_loan') }}" class="btn">+ Add loan</a>
+    </div>
+
+    {% if not loans and not cleared %}
+
+    <div style="text-align:center; padding:60px 20px; color:var(--text-muted);">
+        <div style="font-size:40px; margin-bottom:10px;">🏦</div>
+        <p style="font-size:15px; font-weight:600;">No loans tracked yet</p>
+        <a href="{{ url_for('add_loan') }}" class="btn" style="display:inline-block; margin-top:14px;">+ Add loan</a>
+    </div>
+
+    {% else %}
+
+    <div class="split">
+
+        <div class="split-main">
+
+            {% if loans %}
+            <div class="loan-list">
+                {% for l in loans %}
+                <a href="{{ url_for('loan_detail', loan_id=l.id) }}" class="card-link">
+                    <div class="section-card loan-card">
+                        <h3>{{ l.name }}</h3>
+                        <p class="loan-sub">{{ l.lender }} · {{ l.rate_text }} interest</p>
+
+                        <div class="loan-line">
+                            <span>{{ l.emis_paid }} / {{ l.tenure }} EMIs paid</span>
+                            <span>{{ l.pct }}%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width:{{ l.pct }}%; background:{{ 'var(--green)' if l.pct >= 75 else 'var(--amber)' }};"></div>
+                        </div>
+
+                        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:4px;">EMI <strong style="color:var(--text-primary);">₹{{ l.emi | inr }}</strong>/month · ₹{{ l.remaining | inr }} left</p>
+                        <p class="emi-meta {{ l.due_color if l.due_color != 'muted' else '' }}" style="font-weight:600;">{{ l.due_text }}</p>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if cleared %}
+            <h3 style="margin-top:14px; font-size:16px; color:var(--text-primary);">✅ Cleared loans</h3>
+            <div class="loan-list">
+                {% for l in cleared %}
+                <a href="{{ url_for('loan_detail', loan_id=l.id) }}" class="card-link">
+                    <div class="section-card loan-card" style="opacity:0.8;">
+                        <h3>{{ l.name }}</h3>
+                        <p class="loan-sub">{{ l.lender }}</p>
+                        <p style="font-size:13px; font-weight:600; color:var(--green);">✓ ₹{{ l.total_payable | inr }} paid in full</p>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+        </div>
+
+        <aside class="split-side">
+
+            <div class="section-card">
+                <div class="panel-title">
+                    <h3>Upcoming EMIs</h3>
+                </div>
+                {% for u in upcoming %}
+                <a href="{{ url_for('loan_detail', loan_id=u.loan_id) }}" class="emi-row" style="text-decoration:none; color:inherit;">
+                    <div>
+                        <div class="emi-name">{{ u.name }}</div>
+                        <div class="emi-meta {{ u.due_color if u.due_color != 'muted' else '' }}">{{ u.due_text }}</div>
+                    </div>
+                    <div class="emi-amount">₹{{ u.amount | inr }}</div>
+                </a>
+                {% else %}
+                <p class="empty-note">No EMIs due. All your loans are cleared.</p>
+                {% endfor %}
+            </div>
+
+            {% if loans %}
+            <div class="section-card">
+                <div class="panel-title">
+                    <h3>Total interest</h3>
+                </div>
+                <p style="font-size:26px; font-weight:800; color:var(--text-primary);">₹{{ total_interest | inr }}</p>
+                <p class="empty-note" style="margin-top:4px;">What you pay on top of the loan amounts, over the full tenure of your active loans.</p>
+            </div>
+
+            <div class="section-card">
+                <div class="panel-title">
+                    <h3>Interest by loan</h3>
+                </div>
+                {% for l in loans %}
+                <div class="stat-row">
+                    <span>{{ l.name }}</span>
+                    <strong>₹{{ l.total_interest | inr }}</strong>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+        </aside>
+
+    </div>
+
+    {% endif %}
+
+</div>
+
+{% endblock %}

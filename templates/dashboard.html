@@ -1,0 +1,397 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    .dash-details summary { list-style: none; cursor: pointer; }
+    .dash-details summary::-webkit-details-marker { display: none; }
+    .dash-details .chev { display: inline-block; margin-left: 8px; font-size: 11px; color: var(--text-muted); transition: transform 0.15s; }
+    .dash-details[open] > summary .chev { transform: rotate(180deg); }
+    .detail-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; padding: 8px 0 6px; font-size: 13px; color: var(--text-secondary); }
+    .detail-grid dt { font-weight: 600; }
+    .detail-grid dd { margin: 0; color: var(--text-primary); }
+    .row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .mini-btn { margin-top: 6px; padding: 6px 12px; border: 1.5px solid var(--brand); border-radius: 8px; background: var(--bg-card); color: var(--brand); font-size: 12px; font-weight: 600; cursor: pointer; }
+    .mini-btn:hover { background: var(--brand); color: #fff; }
+    a.mini-btn { display: inline-block; text-decoration: none; }
+    .mini-btn.danger { border-color: var(--red); color: var(--red); }
+    .mini-btn.danger:hover { background: var(--red); color: #fff; }
+    .mini-link { font-size: 13px; font-weight: 600; color: var(--brand); text-decoration: none; padding: 8px 12px; border: 1.5px solid var(--border-strong); border-radius: 8px; background: var(--bg-card); }
+    .nav-box { padding: 8px 14px; border: 1.5px solid var(--border-strong); border-radius: 8px; background: var(--bg-card); color: var(--brand); font-weight: 700; text-decoration: none; }
+    .nav-box.off { color: var(--text-muted); opacity: 0.4; }
+    .month-select { padding: 8px 12px; border: 1.5px solid var(--border-strong); border-radius: 8px; font-size: 14px; font-weight: 600; background: var(--bg-input); color: var(--text-primary); }
+    .compare-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .compare-table th, .compare-table td { padding: 8px 6px; border-bottom: 1px solid var(--border); text-align: right; }
+    .compare-table th:first-child, .compare-table td:first-child { text-align: left; }
+    .compare-table th { color: var(--text-secondary); font-size: 12px; }
+</style>
+
+<section class="dashboard">
+
+    <!-- Month switcher, report link and Add Transaction -->
+    <div class="page-head-row">
+
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            {% if prev_arrow %}
+            <a href="{{ url_for('dashboard', month=prev_arrow) }}" title="Previous month" class="nav-box">‹</a>
+            {% else %}
+            <span class="nav-box off">‹</span>
+            {% endif %}
+
+            <form method="GET" action="{{ url_for('dashboard') }}" style="margin:0;">
+                <select name="month" class="month-select" onchange="this.form.submit()">
+                    {% for m in months %}
+                    <option value="{{ m.value }}" {% if m.value == month %}selected{% endif %}>{{ m.label }}</option>
+                    {% endfor %}
+                </select>
+                <noscript><button type="submit">Go</button></noscript>
+            </form>
+
+            {% if next_arrow %}
+            <a href="{{ url_for('dashboard', month=next_arrow) }}" title="Next month" class="nav-box">›</a>
+            {% else %}
+            <span class="nav-box off">›</span>
+            {% endif %}
+
+            <a href="{{ url_for('report', month_str=month) }}" class="mini-link">{{ 'Report so far' if is_current_month else 'View report' }}</a>
+            <a href="{{ url_for('transactions', month=month) }}" class="mini-link">All transactions</a>
+            {% if not is_current_month %}
+            <a href="{{ url_for('dashboard') }}" class="mini-link">Back to this month</a>
+            {% endif %}
+        </div>
+
+        <a href="{{ url_for('add_transaction') }}" class="btn-accent">+ Add Transaction</a>
+    </div>
+
+    <!-- Report ready banner (first week of a month) -->
+    {% if report_banner %}
+    <div class="insights-banner" style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+        <span>📊 {{ report_banner.label }} report is ready</span>
+        <a href="{{ url_for('report', month_str=report_banner.month) }}" class="mini-link">View report →</a>
+    </div>
+    {% endif %}
+
+    <!-- Insight banner and goals strip, side by side -->
+    <div class="pair-row">
+
+        <div class="insights-banner">
+            💡 {{ insight }}
+        </div>
+
+        <div class="goals-teaser">
+            <span>
+                {% if goals %}
+                    {{ goals|length }} goal{{ 's' if goals|length > 1 else '' }} in progress —
+                    {% for g in goals %}{{ g.name }} {{ g.pct }}%{% if not loop.last %} · {% endif %}{% endfor %}
+                {% elif goals_total %}
+                    All {{ goals_total }} goal{{ 's' if goals_total > 1 else '' }} achieved 🎉
+                {% else %}
+                    No goals yet
+                {% endif %}
+            </span>
+            <a href="{{ url_for('dream_planner') }}">View Dream Planner →</a>
+        </div>
+
+    </div>
+
+    <!-- Snapshot Row -->
+    <div class="snapshot-row">
+
+        <div class="snapshot-card accent-income">
+            <h3>Income</h3>
+            <p>₹{{ income | inr }}</p>
+        </div>
+
+        {% if budget_limit > 0 %}
+        <div class="snapshot-card {{ 'accent-red' if budget_used_pct > 90 else 'accent-amber' if budget_used_pct >= 70 else 'accent-green' }}">
+            <h3>Budget Used</h3>
+            <p class="{{ 'red' if budget_used_pct > 90 else 'amber' if budget_used_pct >= 70 else 'green' }}">{{ budget_used_pct }}%</p>
+            <small style="display:block; margin-top:6px; font-size:12px; color:var(--text-secondary);">₹{{ expenses | inr }} of ₹{{ budget_limit | inr }}{% if budget_kind == 'carried' %} · carried from {{ budget_from }}{% endif %}</small>
+            <a href="{{ url_for('set_budget', month=month) }}" class="mini-link" style="display:inline-block; margin-top:4px; font-size:12px;">{{ 'Set for ' ~ month_name if budget_kind == 'carried' else 'Change budget' }}</a>
+        </div>
+        {% else %}
+        <div class="snapshot-card">
+            <h3>Budget Used</h3>
+            <p>Not set</p>
+            <a href="{{ url_for('set_budget', month=month) }}" class="mini-link" style="display:inline-block; margin-top:6px; font-size:12px;">Set your budget for {{ month_name }}</a>
+        </div>
+        {% endif %}
+
+        <div class="snapshot-card accent-saved">
+            <h3>Saved</h3>
+            <p>{% if saved < 0 %}-{% endif %}₹{{ saved | abs | inr }}</p>
+            {% if goal_added > 0 %}
+            <small style="display:block; margin-top:6px; font-size:12px; color:var(--text-secondary);">₹{{ goal_added | inr }} went into goals</small>
+            {% endif %}
+        </div>
+
+        <div class="snapshot-card accent-goal">
+            <h3>Goal Progress</h3>
+            <p class="{{ 'green' if goal_progress_pct >= 75 else 'amber' }}">{{ goal_progress_pct }}%</p>
+        </div>
+
+    </div>
+
+    <!-- Spending by Category + Pie Chart -->
+    <div class="category-row">
+
+        <div class="category-card">
+            <h3>Spending by Category</h3>
+            <ul class="category-list">
+                {% for c in categories %}
+                <li><span><span class="dot {{ c.color }}"></span>{{ c.name }}</span> <span>₹{{ c.amount | inr }} · {{ c.share }}%</span></li>
+                {% else %}
+                <li>No expenses logged yet</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="chart-card">
+            <h3>Distribution</h3>
+            <div style="height:160px; position:relative;">
+                <canvas id="categoryPieChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Monthly Expense Trend -->
+    <div class="trend-card">
+        <h3>Monthly Expense Trend</h3>
+        <div style="height:160px; position:relative;">
+            <canvas id="trendChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Money to Receive and Bills, side by side -->
+    <div class="pair-row">
+
+        <div class="section-card">
+            <div class="panel-title">
+                <h3>Money to Receive</h3>
+                <a href="{{ url_for('add_lending') }}" class="mini-link">+ Add</a>
+            </div>
+            {% if pending_total > 0 %}
+            <p style="font-size:12px; color:var(--text-secondary); margin:-6px 0 8px;">₹{{ pending_total | inr }} still to come</p>
+            {% endif %}
+
+            {% for r in receivables %}
+            <details class="dash-details">
+                <summary class="receive-row">
+                    <span>{{ r.person }}</span>
+                    <span>₹{{ r.amount | inr }} <span class="{{ 'green' if r.status == 'received' else 'amber' }}">{{ r.status|capitalize }}</span><span class="chev">▾</span></span>
+                </summary>
+                <dl class="detail-grid">
+                    <dt>Lent on</dt><dd>{{ r.lent_date | dmy }}</dd>
+                    <dt>Interest</dt><dd>{{ r.interest_text }}</dd>
+                    <dt>Notes</dt><dd>{{ r.notes or '—' }}</dd>
+                    {% if r.status == 'received' %}
+                    <dt>Received on</dt><dd>{{ r.received_date | dmy }}</dd>
+                    {% endif %}
+                </dl>
+                <div class="row-actions">
+                    <a href="{{ url_for('edit_lending', lending_id=r.id) }}" class="mini-btn">Edit</a>
+                    {% if r.status == 'pending' %}
+                    <form method="POST" action="{{ url_for('mark_received', lending_id=r.id) }}">
+                        <input type="hidden" name="month" value="{{ month }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="mini-btn">Mark received</button>
+                    </form>
+                    {% endif %}
+                    <form method="POST" action="{{ url_for('delete_lending', lending_id=r.id) }}" data-confirm="Delete this entry?">
+                        <input type="hidden" name="month" value="{{ month }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="mini-btn danger">Delete</button>
+                    </form>
+                </div>
+            </details>
+            {% else %}
+            <p class="empty-note">Nothing pending 🎉</p>
+            {% endfor %}
+        </div>
+
+        <div class="section-card">
+            <div class="panel-title">
+                <h3>Bills · {{ month_name }}</h3>
+                <a href="{{ url_for('add_bill') }}" class="mini-link">+ Add</a>
+            </div>
+            <div class="bills-row">
+                {% for b in bills %}
+                <div class="bill-card">
+                    <h4>{{ b.name }}</h4>
+                    <p class="{{ b.status_color }}">{{ b.status_text }}</p>
+                    <small>₹{{ b.amount | inr }}</small>
+                    <details class="dash-details">
+                        <summary style="font-size:12px; font-weight:600; color:var(--brand); margin-top:6px;">Details<span class="chev">▾</span></summary>
+                        <dl class="detail-grid">
+                            <dt>Due</dt><dd>{{ b.due_date | dmy }}</dd>
+                            <dt>Amount</dt><dd>₹{{ b.amount | inr }}</dd>
+                            <dt>Last month</dt><dd>{% if b.last_amount is not none %}₹{{ b.last_amount | inr }}{% else %}—{% endif %}</dd>
+                        </dl>
+                        <div class="row-actions">
+                            {% if is_current_month %}
+                            <a href="{{ url_for('edit_bill', payment_id=b.payment_id) }}" class="mini-btn">Edit</a>
+                            {% endif %}
+                            {% if not b.is_paid %}
+                            <form method="POST" action="{{ url_for('mark_bill_paid', payment_id=b.payment_id) }}">
+                                <input type="hidden" name="month" value="{{ month }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="mini-btn">Mark paid</button>
+                            </form>
+                            {% endif %}
+                            <form method="POST" action="{{ url_for('delete_bill', bill_id=b.bill_id) }}"data-confirm="Delete this bill? It will be removed from every month, not just this one.">
+                                <input type="hidden" name="month" value="{{ month }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="mini-btn danger">Delete</button>
+                            </form>
+                        </div>
+                    </details>
+                </div>
+                {% else %}
+                <p class="empty-note">No bills for {{ month_name }}</p>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Category Comparison -->
+    <details class="dash-details">
+        <summary class="btn-outline" style="display:block; text-align:center;">View Category Comparison<span class="chev">▾</span></summary>
+        <div class="section-card" style="margin-top:12px;">
+            <h3>{{ prev_name }} vs {{ month_name }}{% if is_current_month %} (so far){% endif %}</h3>
+            {% if compare_rows %}
+            <table class="compare-table">
+                <thead>
+                    <tr><th>Category</th><th>{{ prev_name }}</th><th>{{ month_name }}</th><th>Change</th></tr>
+                </thead>
+                <tbody>
+                    {% for r in compare_rows %}
+                    <tr>
+                        <td>{{ r.name }}</td>
+                        <td>₹{{ r.prev | inr }}</td>
+                        <td>₹{{ r.cur | inr }}</td>
+                        <td>
+                            {% if r.diff > 0 %}
+                                <span class="{{ 'amber' if r.prev == 0 else 'red' }}">{{ 'New' if r.prev == 0 else '+₹' ~ (r.diff | inr) }}</span>
+                            {% elif r.diff < 0 %}
+                                <span class="green">-₹{{ (0 - r.diff) | inr }}</span>
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td><strong>Total</strong></td>
+                        <td><strong>₹{{ prev_total | inr }}</strong></td>
+                        <td><strong>₹{{ expenses | inr }}</strong></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+            {% else %}
+            <p class="empty-note">No spending to compare yet.</p>
+            {% endif %}
+        </div>
+    </details>
+
+</section>
+
+<script>
+    const categoryLabels = {{ categories | map(attribute='name') | list | tojson }};
+    const categoryData = {{ categories | map(attribute='chart_amount') | list | tojson }};
+    const trendLabels = {{ trend_labels | tojson }};
+    const trendValues = {{ trend_values | tojson }};
+
+    // 1,20,000 -> "₹1.2L", 25,000 -> "₹25K", 1,50,00,000 -> "₹1.5Cr"
+    function shortRupees(v) {
+        const trim = (n) => { const s = n.toFixed(1); return s.endsWith('.0') ? s.slice(0, -2) : s; };
+        const a = Math.abs(v);
+        if (a >= 1e7) return '₹' + trim(v / 1e7) + 'Cr';
+        if (a >= 1e5) return '₹' + trim(v / 1e5) + 'L';
+        if (a >= 1e3) return '₹' + trim(v / 1e3) + 'K';
+        return '₹' + v;
+    }
+    const fullRupees = (v) => '₹' + Number(v).toLocaleString('en-IN');
+
+    // Colors come from the CSS variables, so the chart and the page always agree.
+    function cssVar(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+    function withAlpha(hex, alpha) {
+        const n = parseInt(hex.replace('#', ''), 16);
+        return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + alpha + ')';
+    }
+
+    const pie = new Chart(document.getElementById('categoryPieChart'), {
+        type: 'doughnut',
+        data: {
+            labels: categoryLabels,
+            datasets: [{ data: categoryData, borderWidth: 0 }]
+        },
+        options: {
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: (ctx) => ctx.label + ': ' + fullRupees(ctx.parsed) } }
+            },
+            maintainAspectRatio: false
+        }
+    });
+
+    const trend = new Chart(document.getElementById('trendChart'), {
+        type: 'line',
+        data: {
+            labels: trendLabels,
+            datasets: [{
+                label: 'Expenses',
+                data: trendValues,
+                borderWidth: 3,
+                pointRadius: 4,
+                pointBorderWidth: 1.5,
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: (ctx) => fullRupees(ctx.parsed.y) } }
+            },
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, grid: {}, ticks: { callback: (v) => shortRupees(v) } },
+                x: { grid: {}, ticks: {} }
+            }
+        }
+    });
+
+    function applyChartColors() {
+        const cat = [cssVar('--cat-1'), cssVar('--cat-2'), cssVar('--cat-3'), cssVar('--cat-4')];
+        const grid = cssVar('--chart-grid');
+        const tick = cssVar('--chart-tick');
+
+        pie.data.datasets[0].backgroundColor = cat;
+
+        const line = trend.data.datasets[0];
+        line.borderColor = cat[0];
+        line.backgroundColor = withAlpha(cat[0], 0.2);
+        line.pointBackgroundColor = cat[0];
+        line.pointBorderColor = cssVar('--bg-card');
+
+        trend.options.scales.y.grid.color = grid;
+        trend.options.scales.x.grid.color = grid;
+        trend.options.scales.y.ticks.color = tick;
+        trend.options.scales.x.ticks.color = tick;
+
+        pie.update();
+        trend.update();
+    }
+
+    applyChartColors();
+    document.addEventListener('themechange', applyChartColors);
+</script>
+
+{% endblock %}

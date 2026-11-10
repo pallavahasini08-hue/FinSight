@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="form-page">
+<div class="form-layout">
+
+    <section class="form-card">
+        <h1 class="form-title">{{ 'Edit bill' if editing else 'Add a bill' }}</h1>
+        <p class="form-sub">
+            {% if editing %}
+            Changes apply to this month. From next month on, the bill comes back with the new amount and day.
+            {% else %}
+            The bill comes back every month on the same day, unpaid, until you mark it paid.
+            {% endif %}
+        </p>
+
+        {% if error %}
+        <p class="auth-error" style="margin-bottom:14px;">{{ error }}</p>
+        {% endif %}
+
+        <form method="POST" action="{{ action_url }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label for="name" class="form-label">Bill name</label>
+                <input type="text" id="name" name="name" placeholder="e.g. Electricity" required maxlength="80" value="{{ form.get('name', '') }}">
+            </div>
+
+            <div class="form-grid-2" style="margin-bottom:16px;">
+                <div>
+                    <label for="amount" class="form-label">Amount (₹)</label>
+                    <input type="number" id="amount" name="amount" step="0.01" min="0.01" placeholder="0.00" required value="{{ form.get('amount', '') }}">
+                </div>
+                <div>
+                    <label for="due_date" class="form-label">{{ 'Due date this month' if editing else 'Next due date' }}</label>
+                    <input type="date" id="due_date" name="due_date" value="{{ form.get('due_date', today) }}" required
+                           {% if editing %}min="{{ min_date }}" max="{{ max_date }}"{% endif %}>
+                </div>
+            </div>
+
+            <button type="submit" class="btn">{{ 'Save changes' if editing else 'Save bill' }}</button>
+            <a href="{{ back_url }}" class="form-cancel">Cancel and go back</a>
+
+        </form>
+    </section>
+
+    <aside class="preview-card">
+        <p class="preview-label">Live preview</p>
+        <p class="preview-value" id="pv-name">Bill name</p>
+        <p class="preview-sub">Nothing is saved until you press Save.</p>
+        <div class="preview-row"><span>Amount</span><strong id="pv-amount">₹0</strong></div>
+        <div class="preview-row"><span>{{ 'Due this month' if editing else 'Next due' }}</span><strong id="pv-due">—</strong></div>
+        <div class="preview-row"><span>Repeats</span><strong id="pv-repeat">—</strong></div>
+        {% if not editing %}
+        <div class="preview-row"><span>Starts as</span><strong>Unpaid</strong></div>
+        {% endif %}
+    </aside>
+
+</div>
+</div>
+
+<script>
+    function update() {
+        const due = byId('due_date').value;
+        byId('pv-name').textContent = byId('name').value.trim() || 'Bill name';
+        byId('pv-amount').textContent = rupees(byId('amount').value);
+        byId('pv-due').textContent = dayText(due);
+
+        let repeat = '—';
+        if (due) {
+            const day = parseInt(due.split('-')[2], 10);
+            repeat = 'Day ' + day + ' of every month' + (day > 28 ? ' (short months use their last day)' : '');
+        }
+        byId('pv-repeat').textContent = repeat;
+    }
+
+    ['name', 'amount', 'due_date'].forEach(function (id) {
+        byId(id).addEventListener('input', update);
+    });
+    update();
+</script>
+
+{% endblock %}

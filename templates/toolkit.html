@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="dashboard">
+
+    <div class="page-head">
+        <h1>Financial Toolkit</h1>
+        <p>Tools to help you plan, protect, and track your money</p>
+    </div>
+
+    <div class="split">
+
+        <div class="split-main">
+            <div class="tool-grid">
+
+                <a href="{{ url_for('dream_planner') }}" class="card-link">
+                    <div class="section-card tool-card">
+                        <div class="tool-icon">🎯</div>
+                        <h3 style="margin-bottom:6px;">Dream Planner</h3>
+                        <p class="tool-desc">Set savings goals and track your progress toward them</p>
+                        <p class="tool-preview purple">{{ dream_preview }}</p>
+                        <div class="progress-bar" title="{{ dream_pct }}% saved">
+                            <div class="progress-fill" style="width:{{ dream_pct }}%;"></div>
+                        </div>
+                    </div>
+                </a>
+
+                <a href="{{ url_for('vault_home') }}" class="card-link">
+                    <div class="section-card tool-card">
+                        <div class="tool-icon">📁</div>
+                        <h3 style="margin-bottom:6px;">Document Vault</h3>
+                        <p class="tool-desc">Securely store IDs, insurance, and important documents</p>
+                        <p class="tool-preview teal">{{ vault_preview }}</p>
+                    </div>
+                </a>
+
+                <a href="{{ url_for('loan_tracker') }}" class="card-link">
+                    <div class="section-card tool-card">
+                        <div class="tool-icon">🏦</div>
+                        <h3 style="margin-bottom:6px;">Loan Tracker</h3>
+                        <p class="tool-desc">Track EMIs, interest, and repayment progress</p>
+                        <p class="tool-preview blue">{{ loan_preview }}</p>
+                        <div class="progress-bar" title="{{ loan_pct }}% repaid">
+                            <div class="progress-fill" style="width:{{ loan_pct }}%;"></div>
+                        </div>
+                    </div>
+                </a>
+
+            </div>
+        </div>
+
+        <aside class="split-side">
+            <div class="section-card">
+                <div class="panel-title">
+                    <h3>Needs attention</h3>
+                </div>
+
+                {% if attention %}
+                <ul class="attention-list">
+                    {% for a in attention %}
+                    <li class="attention-item level-{{ a.level }}">
+                        <a href="{{ a.url }}">{{ a.text }}<small>{{ a.detail }}</small></a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="empty-note">Nothing needs attention right now 🎉</p>
+                {% endif %}
+            </div>
+        </aside>
+
+    </div>
+
+</div>
+
+{% endblock %}

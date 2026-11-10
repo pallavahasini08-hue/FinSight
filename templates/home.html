@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="landing">
+
+    <div class="landing-card">
+
+        <span class="landing-emoji">💰</span>
+
+        <h1 class="landing-title">FinSight</h1>
+        <p class="landing-tagline">Clarity for every rupee</p>
+
+        {% if current_username %}
+        <a href="{{ url_for('dashboard') }}" class="btn">Open my dashboard</a>
+        {% else %}
+        <a href="{{ url_for('signup') }}" class="btn">Create an account</a>
+        <p class="auth-switch">Already have an account? <a href="{{ url_for('login') }}">Log in</a></p>
+        {% endif %}
+
+    </div>
+
+</section>
+
+{% endblock %}

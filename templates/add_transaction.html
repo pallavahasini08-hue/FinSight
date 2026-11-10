@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="form-page">
+<div class="form-layout">
+
+    <section class="form-card">
+        <h1 class="form-title">Add a transaction</h1>
+
+        {% if error %}
+        <p class="auth-error" style="margin-bottom:14px;">{{ error }}</p>
+        {% endif %}
+
+        {% if warning %}
+        <p class="form-alert warn">⚠ {{ warning }} Check the date, or press Save again to keep it.</p>
+        {% endif %}
+
+        {% if request.args.get('saved') %}
+        <p class="form-alert ok">✓ Transaction saved — add another below</p>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('add_transaction') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="confirmed_date" value="{{ form.get('date', '') if warning else '' }}">
+
+            <div class="form-grid-2">
+                <div>
+                    <label for="type" class="form-label">Type</label>
+                    <select id="type" name="type" required>
+                        <option value="expense" {% if form.get('type') != 'income' %}selected{% endif %}>Expense</option>
+                        <option value="income" {% if form.get('type') == 'income' %}selected{% endif %}>Income</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="category" class="form-label">Category</label>
+                    <input type="text" id="category" name="category" placeholder="Shopping" list="category-options" required value="{{ form.get('category', '') }}">
+                    <datalist id="category-options">
+                        <option value="Shopping">
+                        <option value="Food">
+                        <option value="Transport">
+                        <option value="Salary">
+                        <option value="Bills">
+                        <option value="Entertainment">
+                    </datalist>
+                </div>
+            </div>
+
+            <div class="form-grid-2">
+                <div>
+                    <label for="amount" class="form-label">Amount (₹)</label>
+                    <input type="number" id="amount" name="amount" step="0.01" min="0.01" placeholder="0.00" required value="{{ form.get('amount', '') }}">
+                </div>
+                <div>
+                    <label for="date" class="form-label">Date</label>
+                    <input type="date" id="date" name="date" value="{{ form.get('date', today) }}" required>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:16px;">
+                <label for="description" class="form-label">Description (optional)</label>
+                <input type="text" id="description" name="description" placeholder="e.g. Groceries at DMart" value="{{ form.get('description', '') }}">
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" name="save_action" value="add_another" class="btn-outline">Save &amp; Add Another</button>
+                <button type="submit" name="save_action" value="done" class="btn">Save &amp; Finish</button>
+            </div>
+            <a href="{{ url_for('dashboard') }}" class="form-cancel">Cancel and go back</a>
+        </form>
+    </section>
+
+    <aside class="preview-card">
+        <p class="preview-label">Live preview</p>
+        <p class="preview-value" id="pv-amount">−₹0</p>
+        <p class="preview-sub">Nothing is saved until you press Save.</p>
+        <div class="preview-row"><span>Type</span><strong id="pv-type">Expense</strong></div>
+        <div class="preview-row"><span>Category</span><strong id="pv-category">—</strong></div>
+        <div class="preview-row"><span>Date</span><strong id="pv-date">—</strong></div>
+        <div class="preview-row"><span>Note</span><strong id="pv-note">—</strong></div>
+    </aside>
+
+</div>
+</div>
+
+<script>
+    function update() {
+        const isIncome = byId('type').value === 'income';
+        const value = byId('pv-amount');
+        value.textContent = (isIncome ? '+' : '−') + rupees(byId('amount').value);
+        value.style.color = isIncome ? 'var(--green)' : 'var(--red)';
+        byId('pv-type').textContent = isIncome ? 'Income' : 'Expense';
+        byId('pv-category').textContent = byId('category').value.trim() || '—';
+        byId('pv-date').textContent = dayText(byId('date').value);
+        byId('pv-note').textContent = byId('description').value.trim() || '—';
+    }
+
+    ['type', 'category', 'amount', 'date', 'description'].forEach(function (id) {
+        byId(id).addEventListener('input', update);
+    });
+    update();
+</script>
+
+{% endblock %}

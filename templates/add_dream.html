@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="form-page">
+<div class="form-layout">
+
+    <section class="form-card">
+        <h1 class="form-title">{{ 'Edit dream' if editing else 'Add a new dream' }}</h1>
+
+        {% if error %}
+        <p class="auth-error" style="margin-bottom:14px;">{{ error }}</p>
+        {% endif %}
+
+        <form method="POST" action="{{ action_url }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label for="name" class="form-label">Dream name</label>
+                <input type="text" id="name" name="name" placeholder="e.g. New Laptop" required maxlength="80" value="{{ form.get('name', '') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="category" class="form-label">Category</label>
+                <input type="text" id="category" name="category" placeholder="e.g. Electronics, Travel" list="dream-categories" required maxlength="40" value="{{ form.get('category', '') }}">
+                <datalist id="dream-categories">
+                    <option value="Electronics">
+                    <option value="Travel">
+                    <option value="Vehicle">
+                    <option value="Home">
+                    <option value="Education">
+                    <option value="Wedding">
+                    <option value="Emergency fund">
+                    <option value="Other">
+                </datalist>
+            </div>
+
+            <div class="form-group">
+                <label for="target_amount" class="form-label">Target amount (₹)</label>
+                <input type="number" id="target_amount" name="target_amount" step="0.01" min="1" placeholder="0.00" required value="{{ form.get('target_amount', '') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="monthly_target" class="form-label">Monthly contribution (optional)</label>
+                <input type="number" id="monthly_target" name="monthly_target" step="0.01" min="1" placeholder="e.g. 2000" value="{{ form.get('monthly_target', '') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="target_date" class="form-label">Target date (optional)</label>
+                <input type="date" id="target_date" name="target_date" value="{{ form.get('target_date', '') }}">
+            </div>
+
+            <label class="check-row">
+                <input type="checkbox" id="is_priority" name="is_priority" value="1" {% if form.get('is_priority') %}checked{% endif %}>
+                Make this my top priority (only one dream can be top priority)
+            </label>
+
+            <button type="submit" class="btn">{{ 'Save changes' if editing else 'Save dream' }}</button>
+            <a href="{{ back_url }}" class="form-cancel">Cancel and go back</a>
+
+        </form>
+    </section>
+
+    <aside class="preview-card">
+        <p class="preview-label">Live preview</p>
+        <p class="preview-value" id="pv-name">Your dream</p>
+        <p class="preview-sub" id="pv-category">Category</p>
+        <div class="preview-row"><span>Target</span><strong id="pv-target">₹0</strong></div>
+        <div class="preview-row"><span>Monthly plan</span><strong id="pv-monthly">—</strong></div>
+        <div class="preview-row"><span>At that pace</span><strong id="pv-eta">—</strong></div>
+        <div class="preview-row"><span>Target date</span><strong id="pv-date">—</strong></div>
+        <div class="preview-row"><span>Top priority</span><strong id="pv-priority">No</strong></div>
+    </aside>
+
+</div>
+</div>
+
+<script>
+    function update() {
+        const target = parseFloat(byId('target_amount').value);
+        const monthly = parseFloat(byId('monthly_target').value);
+
+        byId('pv-name').textContent = byId('name').value.trim() || 'Your dream';
+        byId('pv-category').textContent = byId('category').value.trim() || 'Category';
+        byId('pv-target').textContent = target > 0 ? rupees(target) : '₹0';
+        byId('pv-monthly').textContent = monthly > 0 ? rupees(monthly) + ' / month' : '—';
+
+        let eta = '—';
+        if (target > 0 && monthly > 0) {
+            const months = Math.ceil(target / monthly);
+            eta = months + ' month' + (months === 1 ? '' : 's');
+        }
+        byId('pv-eta').textContent = eta;
+        byId('pv-date').textContent = dayText(byId('target_date').value);
+        byId('pv-priority').textContent = byId('is_priority').checked ? 'Yes' : 'No';
+    }
+
+    ['name', 'category', 'target_amount', 'monthly_target', 'target_date', 'is_priority'].forEach(function (id) {
+        byId(id).addEventListener('input', update);
+        byId(id).addEventListener('change', update);
+    });
+    update();
+</script>
+
+{% endblock %}

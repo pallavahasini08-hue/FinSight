@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    .txn-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+    .txn-row:last-child { border-bottom: none; }
+    .txn-main { min-width: 0; }
+    .txn-title { font-weight: 600; color: var(--text-primary); }
+    .txn-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; word-break: break-word; }
+    .txn-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    .txn-amount { font-weight: 700; }
+    .month-select { padding: 8px 12px; border: 1.5px solid var(--border-strong); border-radius: 8px; font-size: 14px; font-weight: 600; background: var(--bg-input); color: var(--text-primary); }
+    .mini-link { font-size: 13px; font-weight: 600; color: var(--brand); text-decoration: none; }
+    .mini-btn { padding: 6px 12px; border: 1.5px solid var(--red); border-radius: 8px; background: var(--bg-card); color: var(--red); font-size: 12px; font-weight: 600; cursor: pointer; }
+    .mini-btn:hover { background: var(--red); color: #fff; }
+</style>
+
+{% macro entry_row(e, month) %}
+<div class="txn-row">
+    <div class="txn-main">
+        <div class="txn-title">{{ e.title }}</div>
+        <div class="txn-meta">{{ e.date | dmy }}{% if e.note %} · {{ e.note }}{% endif %}</div>
+    </div>
+    <div class="txn-right">
+        <span class="txn-amount" style="color:{{ 'var(--green)' if e.kind == 'income' else 'var(--red)' }};">{{ '+' if e.kind == 'income' else '−' }}₹{{ e.amount | inr }}</span>
+        <form method="POST" action="{{ url_for('delete_transaction') }}" data-confirm="Delete this entry?" style="margin:0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="kind" value="{{ e.kind }}">
+            <input type="hidden" name="id" value="{{ e.id }}">
+            <input type="hidden" name="month" value="{{ month }}">
+            <button type="submit" class="mini-btn">Delete</button>
+        </form>
+    </div>
+</div>
+{% endmacro %}
+
+<section class="dashboard">
+
+    <div class="page-head-row">
+        <div class="page-head">
+            <h1>Transactions</h1>
+            <p>Every income and expense entry. Typed something wrong? Delete it and add it again.</p>
+        </div>
+        <a href="{{ url_for('add_transaction') }}" class="btn-accent">+ Add Transaction</a>
+    </div>
+
+    <div class="page-head-row">
+        <form method="GET" action="{{ url_for('transactions') }}" style="margin:0;">
+            <select name="month" class="month-select" onchange="this.form.submit()">
+                {% for m in months %}
+                <option value="{{ m.value }}" {% if m.value == month %}selected{% endif %}>{{ m.label }}</option>
+                {% endfor %}
+            </select>
+            <noscript><button type="submit">Go</button></noscript>
+        </form>
+        <a href="{{ url_for('dashboard', month=month) }}" class="mini-link">← Back to dashboard</a>
+    </div>
+
+    <div class="section-card">
+        <div class="stat-row"><span>Income in {{ month_name }}</span><strong style="color:var(--green);">₹{{ income | inr }}</strong></div>
+        <div class="stat-row"><span>Expenses in {{ month_name }}</span><strong style="color:var(--red);">₹{{ expenses | inr }}</strong></div>
+    </div>
+
+    <div class="section-card">
+        <div class="panel-title">
+            <h3>{{ month_name }}</h3>
+        </div>
+        {% for e in entries %}
+        {{ entry_row(e, month) }}
+        {% else %}
+        <p class="empty-note">Nothing logged in {{ month_name }}.</p>
+        {% endfor %}
+    </div>
+
+    {% if future_entries %}
+    <div class="section-card">
+        <div class="panel-title">
+            <h3>Dated in the future</h3>
+        </div>
+        <p class="empty-note" style="margin-bottom:8px;">These do not count in any month yet. If a date was a typo, delete the entry here and add it again.</p>
+        {% for e in future_entries %}
+        {{ entry_row(e, month) }}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+</section>
+
+{% endblock %}

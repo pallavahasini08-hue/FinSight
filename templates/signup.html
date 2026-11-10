@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="landing">
+<div class="landing-card" style="max-width:380px;">
+
+    <span class="landing-emoji" style="font-size:48px;">💰</span>
+    <h1 style="font-size:22px; font-weight:700; color:var(--text-primary); margin-bottom:4px;">Create your account</h1>
+    <p class="landing-tagline" style="margin-bottom:24px;">Clarity for every rupee</p>
+
+    {% if error %}
+    <p class="auth-error">{{ error }}</p>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('signup') }}" style="text-align:left;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required autofocus autocomplete="username">
+
+        <label for="password">Password</label>
+        <div style="position:relative;">
+            <input type="password" id="password" name="password" required minlength="8" autocomplete="new-password" style="padding-right:44px;">
+            <button type="button" id="pwToggle" aria-label="Show password"
+                    style="position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:var(--text-muted); padding:2px; display:flex;">
+                <svg id="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+            </button>
+        </div>
+        <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">At least 8 characters.</p>
+
+        <button type="submit" class="btn">Sign Up</button>
+    </form>
+
+    <p class="auth-switch">Already have an account? <a href="{{ url_for('login') }}">Log in</a></p>
+
+</div>
+</div>
+
+<script>
+    const eyeOpen = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+    const eyeOff = '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+
+    byId('pwToggle').addEventListener('click', function () {
+        const input = byId('password');
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        byId('eye-icon').innerHTML = show ? eyeOff : eyeOpen;
+        this.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+</script>
+
+{% endblock %}

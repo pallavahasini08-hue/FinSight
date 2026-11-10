@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="form-page">
+<div class="form-layout">
+
+    <section class="form-card">
+        <h1 class="form-title">{{ 'Edit entry' if editing else 'Add money to receive' }}</h1>
+        <p class="form-sub">{{ 'Fix or fill in the details. Whether it is pending or received stays as it is.' if editing else 'Money you lent to someone and want back.' }}</p>
+
+        {% if error %}
+        <p class="auth-error" style="margin-bottom:14px;">{{ error }}</p>
+        {% endif %}
+
+        {% if warning %}
+        <p class="form-alert warn">⚠ {{ warning }} Check the date, or press Save again to keep it.</p>
+        {% endif %}
+
+        <form method="POST" action="{{ action_url }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="confirmed_date" value="{{ form.get('lent_date', '') if warning else '' }}">
+
+            <div class="form-group">
+                <label for="person_name" class="form-label">Who did you lend to?</label>
+                <input type="text" id="person_name" name="person_name" placeholder="e.g. Ravi" required maxlength="80" value="{{ form.get('person_name', '') }}">
+            </div>
+
+            <div class="form-grid-2">
+                <div>
+                    <label for="amount" class="form-label">Amount (₹)</label>
+                    <input type="number" id="amount" name="amount" step="0.01" min="0.01" placeholder="0.00" required value="{{ form.get('amount', '') }}">
+                </div>
+                <div>
+                    <label for="lent_date" class="form-label">Lent on</label>
+                    <input type="date" id="lent_date" name="lent_date" value="{{ form.get('lent_date', today) }}" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="interest" class="form-label">Interest % (optional)</label>
+                <input type="number" id="interest" name="interest" step="0.01" min="0" placeholder="e.g. 12" value="{{ form.get('interest', '') }}">
+            </div>
+
+            <div class="form-group" style="margin-bottom:16px;">
+                <label for="notes" class="form-label">Notes (optional)</label>
+                <input type="text" id="notes" name="notes" placeholder="e.g. Will return after Diwali" maxlength="300" value="{{ form.get('notes', '') }}">
+            </div>
+
+            <button type="submit" class="btn">{{ 'Save changes' if editing else 'Save' }}</button>
+            <a href="{{ back_url }}" class="form-cancel">Cancel and go back</a>
+
+        </form>
+    </section>
+
+    <aside class="preview-card">
+        <p class="preview-label">Live preview</p>
+        <p class="preview-value" id="pv-amount">₹0</p>
+        <p class="preview-sub" id="pv-person">Who you lent to</p>
+        <div class="preview-row"><span>Lent on</span><strong id="pv-date">—</strong></div>
+        <div class="preview-row"><span>Interest</span><strong id="pv-interest">None</strong></div>
+        <div class="preview-row"><span>Notes</span><strong id="pv-notes">—</strong></div>
+        {% if not editing %}
+        <div class="preview-row"><span>Status</span><strong>Pending</strong></div>
+        {% endif %}
+    </aside>
+
+</div>
+</div>
+
+<script>
+    function update() {
+        const interest = byId('interest').value;
+        byId('pv-amount').textContent = rupees(byId('amount').value);
+        byId('pv-person').textContent = byId('person_name').value.trim() || 'Who you lent to';
+        byId('pv-date').textContent = dayText(byId('lent_date').value);
+        byId('pv-interest').textContent = interest !== '' ? interest + '%' : 'None';
+        byId('pv-notes').textContent = byId('notes').value.trim() || '—';
+    }
+
+    ['person_name', 'amount', 'lent_date', 'interest', 'notes'].forEach(function (id) {
+        byId(id).addEventListener('input', update);
+    });
+    update();
+</script>
+
+{% endblock %}

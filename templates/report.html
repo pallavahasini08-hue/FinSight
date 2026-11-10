@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    .report-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .report-table th, .report-table td { padding: 8px 6px; border-bottom: 1px solid var(--border); text-align: right; }
+    .report-table th:first-child, .report-table td:first-child { text-align: left; }
+    .report-table th { color: var(--text-secondary); font-size: 12px; }
+    .report-nav { padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); color: var(--brand); font-weight: 700; text-decoration: none; }
+    .report-nav.off { color: var(--text-muted); opacity: 0.4; }
+</style>
+
+<section class="dashboard">
+
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:8px;">
+            {% if prev_link %}
+            <a href="{{ url_for('report', month_str=prev_link) }}" title="Previous month" class="report-nav">‹</a>
+            {% else %}
+            <span class="report-nav off">‹</span>
+            {% endif %}
+            <h2 style="margin:0; font-size:20px; color:var(--text-primary);">{{ month_name }} report</h2>
+            {% if next_link %}
+            <a href="{{ url_for('report', month_str=next_link) }}" title="Next month" class="report-nav">›</a>
+            {% else %}
+            <span class="report-nav off">›</span>
+            {% endif %}
+        </div>
+        <a href="{{ url_for('dashboard', month=month) }}" style="font-size:13px; font-weight:600; color:var(--brand); text-decoration:none;">← Back to Dashboard</a>
+    </div>
+
+    {% if is_current_month %}
+    <div class="insights-banner">⏳ This month is still in progress, so the numbers can change.</div>
+    {% endif %}
+
+    <!-- Overview -->
+    <div class="snapshot-row">
+        <div class="snapshot-card accent-income">
+            <h3>Income</h3>
+            <p>₹{{ income | inr }}</p>
+        </div>
+        <div class="snapshot-card accent-red">
+            <h3>Spent</h3>
+            <p>₹{{ expenses | inr }}</p>
+        </div>
+        <div class="snapshot-card accent-saved">
+            <h3>Saved</h3>
+            <p>{% if saved < 0 %}-{% endif %}₹{{ saved | abs | inr }}</p>
+        </div>
+        {% if budget_limit > 0 %}
+        <div class="snapshot-card {{ 'accent-red' if budget_used_pct > 90 else 'accent-amber' if budget_used_pct >= 70 else 'accent-green' }}">
+            <h3>Budget Used</h3>
+            <p class="{{ 'red' if budget_used_pct > 90 else 'amber' if budget_used_pct >= 70 else 'green' }}">{{ budget_used_pct }}%</p>
+        </div>
+        {% else %}
+        <div class="snapshot-card">
+            <h3>Budget Used</h3>
+            <p>Not set</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- In plain words -->
+    <div class="section-card">
+        <h3>In plain words</h3>
+        <ul style="margin:8px 0 0 18px; font-size:14px; line-height:1.7; color:var(--text-primary);">
+            {% for line in lines %}
+            <li>{{ line }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Category table -->
+    <div class="section-card">
+        <h3>Spending by category</h3>
+        {% if rows %}
+        <table class="report-table">
+            <thead>
+                <tr><th>Category</th><th>{{ prev_name }}</th><th>{{ month_name }}</th><th>Share</th><th>Change</th></tr>
+            </thead>
+            <tbody>
+                {% for r in rows %}
+                <tr>
+                    <td>{{ r.name }}</td>
+                    <td>₹{{ r.prev | inr }}</td>
+                    <td>₹{{ r.cur | inr }}</td>
+                    <td>{{ r.share }}%</td>
+                    <td>
+                        {% if r.diff > 0 %}
+                            <span class="{{ 'amber' if r.prev == 0 else 'red' }}">{{ 'New' if r.prev == 0 else '+₹' ~ (r.diff | inr) }}</span>
+                        {% elif r.diff < 0 %}
+                            <span class="green">-₹{{ (0 - r.diff) | inr }}</span>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No spending was logged for this month.</p>
+        {% endif %}
+    </div>
+
+</section>
+
+{% endblock %}
