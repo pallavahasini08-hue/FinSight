@@ -21,6 +21,7 @@ if not app.secret_key:
     raise RuntimeError("Set the FINSIGHT_SECRET_KEY environment variable before starting FinSight.")
 
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FINSIGHT_HTTPS") == "1"
 # Vault files are encrypted before they are saved. This key is the ONLY way to read them.
 # BACK IT UP (for example in a password manager). If it is lost, the files are gone for good.
 # Create it once with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
