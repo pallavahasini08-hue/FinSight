@@ -2,6 +2,9 @@
 
 A personal-finance web app built with Flask, Jinja2, SQLite and Chart.js.
 
+**Live site:** https://myfinsight.pythonanywhere.com
+It runs on a free hosting plan, so it may be offline for short periods. Please use fake data only.
+
 ## Features
 - Dashboard with income, spending by category, monthly trend and budget progress
 - Bills (one payment row per month), money to receive, and goals ("dreams")
@@ -54,3 +57,4 @@ Keep the vault key safe and never change it, or existing vault files cannot be o
 
 ## Use fake data only
 This is a learning project. Please do not enter real financial details or real documents.
+The database is not encrypted and the site owner can read stored data, so use made-up names, amounts and files only.
