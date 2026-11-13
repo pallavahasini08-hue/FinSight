@@ -31,6 +31,7 @@
                         <option value="expense" {% if form.get('type') != 'income' %}selected{% endif %}>Expense</option>
                         <option value="income" {% if form.get('type') == 'income' %}selected{% endif %}>Income</option>
                     </select>
+                    <p class="form-note">Choose Expense (money you spent) or Income (money you received, like salary).</p>
                 </div>
                 <div>
                     <label for="category" class="form-label">Category</label>

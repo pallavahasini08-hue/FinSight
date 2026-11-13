@@ -63,7 +63,20 @@
         <a href="{{ url_for('add_transaction') }}" class="btn-accent">+ Add Transaction</a>
     </div>
 
-    <!-- Report ready banner (first week of a month) -->
+        <!-- Getting-started card: only shown while the account is brand new -->
+        {% if is_current_month %} 
+        <div class="insights-banner" style="display:block; margin-bottom:16px;">
+            <strong>👋 Welcome! Here's how to start</strong>
+            <ol style="margin:8px 0 0 18px; padding:0; line-height:1.7; font-weight:400;">
+                <li>💰 <b>Add your income first (the money you have).</b> Click <b>+ Add Transaction</b>, choose <b>Income</b> and enter your salary or pocket money.</li>
+                <li>🛒 <b>Then add what you spent.</b> Click <b>+ Add Transaction</b> again and choose <b>Expense</b> for things like food, rent or travel.</li>
+                <li>📊 <b>Now see where your money goes.</b> Set a monthly budget, and your charts and analysis appear right here.</li>
+                <li>⬇️ <b>Scroll down this page for more:</b> <b>Money to Receive</b> tracks money you are waiting to get back from others, <b>Bills</b> tracks your monthly bills, and <b>View Category Comparison</b> (click it to open) compares this month with last month.</li>
+                <li>🧰 <b>Also try the Financial Toolkit!</b> You are on <b>Personal Finance</b> now. At the top of the page, near the <b>Dark/Light</b> button, click <b>Financial Toolkit</b> for more features: loans, dreams and a document vault.</li>
+            </ol> 
+        </div>
+        {% endif %}
+        <!-- Report ready banner (first week of a month) -->
     {% if report_banner %}
     <div class="insights-banner" style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
         <span>📊 {{ report_banner.label }} report is ready</span>

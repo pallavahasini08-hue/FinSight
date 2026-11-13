@@ -1557,6 +1557,8 @@ def build_goal(g, contributed=None):
         elif g["target_date"]:
             m = months_until(g["target_date"])
             months_left = None if m is None else max(0, m)
+        if months_left is not None and months_left > 1200:   # over 100 years: not a real estimate
+            months_left = None
     est_label = month_label(shift_month(current_month(), months_left)) if months_left is not None else None
     if months_left is None:
         months_left_text = "—"
